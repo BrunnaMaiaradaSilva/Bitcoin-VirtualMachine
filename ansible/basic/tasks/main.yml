@@ -11,6 +11,9 @@
   with_items:
     - ppa:webupd8team/brackets
     - ppa:jonathonf/vim
+    - deb http://archive.ubuntu.com/ubuntu/ cosmic universe
+    - deb http://archive.ubuntu.com/ubuntu/ cosmic-updates universe
+    - deb http://security.ubuntu.com/ubuntu/ cosmic-security universe
 
 - name: Update repositories cache and install packages
   become: yes
@@ -19,6 +22,7 @@
       'brackets',
       'curl',
       'git',
+      'gnome-tweak-tool',
       'jq',
       'tilix',
       'vim'
@@ -38,6 +42,6 @@
   become_user: bitcoin
   get_url:
     url: https://download.electrum.org/3.3.4/electrum-3.3.4-x86_64.AppImage
-    dest: /home/bitcoin/Desktop/Electrum
+    dest: /home/bitcoin/Desktop/Electrum.AppImage
     mode: 0755
 ...
