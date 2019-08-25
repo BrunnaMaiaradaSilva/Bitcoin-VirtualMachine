@@ -1,17 +1,19 @@
 {
   "variables": {
-    "cpus": "3",
+    "cloud_token": "{{ env `VAGRANT_CLOUD_TOKEN` }}",
+    "cpus": "4",
     "disk_size": "51200",
     "headless": "false",
     "memory": "4096",
-    "name": "{{ env `NAME` }}",
+    "name": "bitcoin-virtual-machine-{{timestamp}}",
     "preseed_file_name": "preseed.cfg",
     "ssh_username": "bitcoin",
     "ssh_password": "bitcoin",
-    "ubuntu_codename": "{{ env `UBUNTU_CODENAME` }}",
-    "ubuntu_mirror": "http://archive.ubuntu.com/ubuntu/dists/"
+    "ubuntu_codename": "cosmic",
+    "ubuntu_mirror": "http://archive.ubuntu.com/ubuntu/dists/",
+    "version": "1.0.{{timestamp}}"
   },
-
+  "sensitive-variables": ["cloud_token"],
   "builders":
   [
     {
@@ -19,7 +21,7 @@
       "boot_command":
       [
         "<tab>",
-        "url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ubuntu-desktop/{{ user `preseed_file_name` }} ",
+        "url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/{{ user `preseed_file_name` }} ",
         "auto=true ",
         "net.ifnames=0 ",
         "hostname=localhost ",
@@ -39,29 +41,20 @@
         "{{ user `ubuntu_mirror` }}{{ user `ubuntu_codename` }}/main/installer-amd64/current/images/netboot/mini.iso"
       ],
       "output_directory": "outputs/{{ user `name` }}-virtualbox-iso",
+      "post_shutdown_delay": "10s",
       "shutdown_command": "sudo shutdown -P now",
       "ssh_password": "{{ user `ssh_password` }}",
       "ssh_username": "{{ user `ssh_username` }}",
       "ssh_wait_timeout": "60m",
       "vboxmanage": [
-        [
-          "modifyvm",
-          "{{ .Name }}",
-          "--cpus",
-          "{{ user `cpus` }}"
-        ],
-        [
-          "modifyvm",
-          "{{ .Name }}",
-          "--memory",
-          "{{ user `memory` }}"
-        ],
-        [
-          "modifyvm",
-          "{{ .Name }}",
-          "--audiocontroller",
-          "hda"
-        ]
+        ["modifyvm", "{{ .Name }}", "--cpus", "{{ user `cpus` }}"],
+        ["modifyvm", "{{ .Name }}", "--memory", "{{ user `memory` }}"],
+        ["modifyvm", "{{ .Name }}", "--clipboard", "bidirectional"],
+        ["modifyvm", "{{ .Name }}", "--draganddrop", "bidirectional"],
+        ["modifyvm", "{{ .Name }}", "--usb", "on"],
+        ["modifyvm", "{{ .Name }}", "--usbehci", "on"],
+        ["modifyvm", "{{ .Name }}", "--usbxhci", "on"],
+        ["setextradata", "{{ .Name }}", "GUI/ScaleFactor", "1.6"]
       ],
       "vm_name": "{{ user `name` }}"
     }
@@ -71,8 +64,7 @@
       "type": "shell",
       "execute_command": "{{ .Vars }} sudo -E bash -x '{{ .Path }}'",
       "scripts": [
-        "scripts/ubuntu/update.sh",
-        "scripts/linux-common/vagrant.sh"
+        "scripts/vagrant_insecure_ssh.sh"
       ]
     },
     {
@@ -83,6 +75,13 @@
       ],
       "playbook_file": "../ansible/playbook.yml",
       "user": "bitcoin"
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{ .Vars }} sudo -E bash -x '{{ .Path }}'",
+      "scripts": [
+        "scripts/install_VBoxGuestAdditions.sh"
+      ]
     }
   ],
   "post-processors": [
@@ -91,8 +90,16 @@
         "type": "vagrant",
         "keep_input_artifact": true,
         "compression_level": 6,
-        "vagrantfile_template": "../packer/Vagrantfile.template",
+        "vagrantfile_template": "Vagrantfile.template",
         "output": "../packer/outputs/{{ user `name` }}-{{ .Provider }}.box"
+      },
+      {
+        "type": "vagrant-cloud",
+        "access_token": "{{user `cloud_token`}}",
+        "box_tag": "bitcoin-studio/Bitcoin-VirtualMachine",
+        "no_release": false,
+        "version_description": "Ubuntu 18.10 VirtualBox image packaged with softwares for Bitcoin / Lightning Network like Bitcoin Core, LND, c-lightning, Electrum, a BitcoinJS guide, etc. The image is ideal for Bitcoin workshops, hackathons, etc. Have a look at the readme of this project to learn how to run the box => https://github.com/bitcoin-studio/Bitcoin-VirtualMachine",
+        "version": "{{user `version`}}"
       }
     ]
   ]
